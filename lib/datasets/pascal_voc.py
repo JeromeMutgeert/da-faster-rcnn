@@ -197,6 +197,12 @@ class pascal_voc(imdb):
             #     print 'Removed {} difficult objects'.format(
             #         len(objs) - len(non_diff_objs))
             objs = non_diff_objs
+        
+        # filter unused classes
+        used_objs = [
+            obj for obj in objs if obj.find('name').text.lower().strip() in self._class_to_ind]
+        objs = used_objs
+        
         num_objs = len(objs)
 
         boxes = np.zeros((num_objs, 4), dtype=np.uint16)
