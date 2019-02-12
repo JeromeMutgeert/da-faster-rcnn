@@ -208,6 +208,11 @@ __C.USE_GPU_NMS = True
 __C.GPU_ID = 0
 
 
+# DA options:
+# Working with an on-line Target set: (includes TRAIN.USE_PREFETCH and more)
+__C.FETCH_TARGETS = False
+
+
 def get_output_dir(imdb, net=None):
     """Return the directory where experimental artifacts are placed.
     If the directory does not exist, it is created.

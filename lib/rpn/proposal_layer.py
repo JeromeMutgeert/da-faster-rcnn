@@ -131,7 +131,7 @@ class ProposalLayer(caffe.Layer):
         scores = scores[keep]
 
         # 4. sort all (proposal, score) pairs by score from highest to lowest
-        # 5. take top pre_nms_topN (e.g. 6000)
+        # 5. take top pre_nms_topN (e.g. 12000)
         order = scores.ravel().argsort()[::-1]
         if pre_nms_topN > 0:
             order = order[:pre_nms_topN]
@@ -139,7 +139,7 @@ class ProposalLayer(caffe.Layer):
         scores = scores[order]
 
         # 6. apply nms (e.g. threshold = 0.7)
-        # 7. take after_nms_topN (e.g. 300)
+        # 7. take after_nms_topN (e.g. 2000)
         # 8. return the top proposals (-> RoIs top)
         keep = nms(np.hstack((proposals, scores)), nms_thresh)
         if post_nms_topN > 0:

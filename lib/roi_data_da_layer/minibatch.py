@@ -31,12 +31,12 @@ def get_minibatch(roidb, num_classes):
     blobs = {'data': im_blob}
 
     im_name = roidb[0]['image']
-    if im_name.find("source_") == -1: # synthia image
-        blobs['need_backprop'] = np.zeros((1,),dtype=np.float32)  
+    if im_name.find("target_") != -1: # synthia image
+        blobs['need_backprop'] = np.zeros((1,),dtype=np.float32)
         blobs['dc_label'] = np.zeros((2000, 1),dtype=np.float32)
 
     else: # pascal image
-        blobs['need_backprop'] = np.ones((1,),dtype=np.float32)  
+        blobs['need_backprop'] = np.ones((1,),dtype=np.float32)
         blobs['dc_label'] = np.ones((2000, 1),dtype=np.float32)
 
     if cfg.TRAIN.HAS_RPN:
@@ -143,7 +143,15 @@ def _get_image_blob(roidb, scale_inds):
     processed_ims = []
     im_scales = []
     for i in xrange(num_images):
-        im = cv2.imread(roidb[i]['image'])
+        im_name = roidb[i]['image']
+        im = cv2.imread(im_name)
+        
+        # # debug:
+        # import matplotlib.pyplot as plt
+        # plt.imshow(im[:,:,::-1])
+        # plt.show()
+        
+        print "im"
         if roidb[i]['flipped']:
             im = im[:, ::-1, :]
         target_size = cfg.TRAIN.SCALES[scale_inds[i]]

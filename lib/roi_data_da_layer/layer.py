@@ -5,7 +5,7 @@
 # Written by Ross Girshick
 # --------------------------------------------------------
 
-"""The data layer used during training to train a Fast R-CNN network.
+"""The data layer used during training to train a DA Fast R-CNN network.
 
 RoIDataLayer implements a Caffe Python layer.
 """
@@ -55,7 +55,8 @@ class RoIDataDALayer(caffe.Layer):
         If cfg.TRAIN.USE_PREFETCH is True, then blobs will be computed in a
         separate process and made available through self._blob_queue.
         """
-        if cfg.TRAIN.USE_PREFETCH:
+        if cfg.TRAIN.USE_PREFETCH or cfg.FETCH_TARGETS:
+            print self._blob_queue.qsize()
             return self._blob_queue.get()
         else:
             db_inds = self._get_next_minibatch_inds()
@@ -66,7 +67,7 @@ class RoIDataDALayer(caffe.Layer):
         """Set the roidb to be used by this layer during training."""
         self._roidb = roidb
         self._shuffle_roidb_inds()
-        if cfg.TRAIN.USE_PREFETCH:
+        if cfg.TRAIN.USE_PREFETCH or cfg.FETCH_TARGETS:
             self._blob_queue = Queue(10)
             self._prefetch_process = BlobFetcher(self._blob_queue,
                                                  self._roidb,
@@ -179,6 +180,8 @@ class BlobFetcher(Process):
         self._shuffle_roidb_inds()
         # fix the random seed for reproducibility
         np.random.seed(cfg.RNG_SEED)
+        
+        self.daemon = True
 
     def _shuffle_roidb_inds(self):
         """Randomly permute the training roidb."""
@@ -198,8 +201,71 @@ class BlobFetcher(Process):
 
     def run(self):
         print 'BlobFetcher started'
+        target_pic = False
+        targets = target_roi_gen()
         while True:
-            db_inds = self._get_next_minibatch_inds()
-            minibatch_db = [self._roidb[i] for i in db_inds]
+            if target_pic:
+                target_roi = next(targets)
+                minibatch_db = [target_roi]
+            else:
+                db_inds = self._get_next_minibatch_inds()
+                minibatch_db = [self._roidb[i] for i in db_inds]
+                
             blobs = get_minibatch(minibatch_db, self._num_classes)
             self._queue.put(blobs)
+            
+            target_pic = not target_pic
+
+empty_roi = {'gt_classes': np.array([1], dtype=np.int32),
+         'max_classes': np.array([1]),
+         'bbox_targets': np.array([[3.,0.,0.,0.,0.]], dtype=np.float32),
+         'boxes': np.array([[0,0,0,0]], dtype=np.uint16),
+         'max_overlaps': np.array([1.], dtype=np.float32),
+         'gt_overlaps': np.array([1.],dtype=np.float32),
+         'image' : None,
+         'width': 0,
+         'height': 0,
+         'flipped': None,
+         }
+
+TARGET_DATA_PATH = "./TargetDataLoaderProcess/{}"
+
+# counter txt's interface:
+def update_read(read):
+    with open(TARGET_DATA_PATH.format("read.txt"),'w') as f:
+        f.write(str(read))
+
+def get_fetched():
+    with open(TARGET_DATA_PATH.format("fetched.txt"),'r') as f:
+        numstr = f.read()
+    return int(numstr)
+
+import time
+def target_roi_gen():
+    
+    num = 0
+    fetched = 0
+    read = 0
+    
+    while True:
+        
+        # Ensure the file 'target_<num>.jpg" is loaded:
+        if not fetched > num:
+            fetched = get_fetched()
+        while not fetched > num:
+            time.sleep(.02) #query with 50 Hz untill the file(s) is (are) loaded.
+            fetched = get_fetched()
+        
+        filepath = TARGET_DATA_PATH.format("target_{}.jpg".format(num))
+        
+        roi = empty_roi.copy()
+        roi['image'] = filepath
+        roi['flipped'] = np.random.randint(2) == 1
+        
+        yield roi
+        
+        read += 1
+        update_read(read)
+        
+        num += 1
+        

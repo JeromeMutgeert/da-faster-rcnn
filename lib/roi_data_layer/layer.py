@@ -55,7 +55,7 @@ class RoIDataLayer(caffe.Layer):
         If cfg.TRAIN.USE_PREFETCH is True, then blobs will be computed in a
         separate process and made available through self._blob_queue.
         """
-        if cfg.TRAIN.USE_PREFETCH:
+        if cfg.TRAIN.USE_PREFETCH or cfg.FETCH_TARGETS:
             return self._blob_queue.get()
         else:
             db_inds = self._get_next_minibatch_inds()
@@ -66,7 +66,7 @@ class RoIDataLayer(caffe.Layer):
         """Set the roidb to be used by this layer during training."""
         self._roidb = roidb
         self._shuffle_roidb_inds()
-        if cfg.TRAIN.USE_PREFETCH:
+        if cfg.TRAIN.USE_PREFETCH or cfg.FETCH_TARGETS:
             self._blob_queue = Queue(10)
             self._prefetch_process = BlobFetcher(self._blob_queue,
                                                  self._roidb,
