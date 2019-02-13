@@ -33,8 +33,8 @@ def to_filename(im_id):
 
 def append_log(msg):
     with open("log.txt",'a') as f:
-        f.write(time.time())
-        f.write(msg)
+        f.write(str(time.time()))
+        f.write(str(msg))
 
 
 async def download_coroutine(session, im_id,im_num):
