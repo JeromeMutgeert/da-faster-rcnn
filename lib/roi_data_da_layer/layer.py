@@ -219,17 +219,6 @@ class BlobFetcher(Process):
             
             target_pic = not target_pic
 
-empty_roi = {'gt_classes': np.array([1], dtype=np.int32),
-         'max_classes': np.array([1]),
-         'bbox_targets': np.array([[3.,0.,0.,0.,0.]], dtype=np.float32),
-         'boxes': np.array([[0,0,0,0]], dtype=np.uint16),
-         'max_overlaps': np.array([1.], dtype=np.float32),
-         'gt_overlaps': np.array([1.],dtype=np.float32),
-         'image' : None,
-         'width': 0,
-         'height': 0,
-         'flipped': None,
-         }
 
 TARGET_DATA_PATH = "./TargetDataLoaderProcess/{}"
 
@@ -266,10 +255,20 @@ def target_roi_gen():
             fetched = get_fetched()
         
         filepath = TARGET_DATA_PATH.format("target_{}.jpg".format(num))
+        flipped = np.random.randint(2) == 1
         
-        roi = empty_roi.copy()
-        roi['image'] = filepath
-        roi['flipped'] = np.random.randint(2) == 1
+        roi = {
+            'gt_classes': np.array([1], dtype=np.int32),
+            'max_classes': np.array([1]),
+            'bbox_targets': np.array([[3.,0.,0.,0.,0.]], dtype=np.float32),
+            'boxes': np.array([[0,0,0,0]], dtype=np.uint16),
+            'max_overlaps': np.array([1.], dtype=np.float32),
+            'gt_overlaps': np.array([1.],dtype=np.float32),
+            'image' : filepath,
+            'width': 0,
+            'height': 0,
+            'flipped': flipped
+        }
         
         yield roi
         
@@ -277,4 +276,3 @@ def target_roi_gen():
         update_read(read)
         
         num += 1
-        

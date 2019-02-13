@@ -1,3 +1,5 @@
+# Python 3 required. This is a seperate process.
+
 import aiohttp
 import asyncio
 import async_timeout
