@@ -286,6 +286,6 @@ def target_roi_gen():
         yield roi
         
         read += 1
-        update_read(read)
+        update_read(read - 1) #lie a bit to make sure it is not removed early
         
         num += 1
