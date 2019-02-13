@@ -245,6 +245,18 @@ def target_roi_gen():
     fetched = 0
     read = 0
     
+    
+    # make sure we do not read an old version of fetched.txt:
+    with open(TARGET_DATA_PATH.format("fetched.txt"),'w') as f:
+        f.write(str(fetched))
+        f.flush()
+        os.fsync(f.fileno())
+    # As long as read.txt is not increased, fetched.txt will not be overwritten by a newer write of the loader process it is reset.
+    
+    # triggers resetting of the live db:
+    update_read(read)
+    
+    
     while True:
         
         # Ensure the file 'target_<num>.jpg" is loaded:
@@ -253,6 +265,7 @@ def target_roi_gen():
         while not fetched > num:
             time.sleep(.02) #query with 50 Hz untill the file(s) is (are) loaded.
             fetched = get_fetched()
+        
         
         filepath = TARGET_DATA_PATH.format("target_{}.jpg".format(num))
         flipped = np.random.randint(2) == 1
