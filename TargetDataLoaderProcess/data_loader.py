@@ -18,8 +18,12 @@ headers = {"api-key": "ccea03e0e3a08c428870393376e5cf7b7be7a55c", "api-secret": 
 
 # counter txt's interface:
 def update_fetched(fetched):
-    with open("fetched.txt",'w') as f:
+    with open("fetched_temp.txt",'w') as f:
         f.write(str(fetched))
+        f.flush()
+        os.fsync(f.fileno())
+    # atomic:
+    os.rename("fetched_temp.txt","fetched.txt")
         
 def get_read():
     global read
@@ -33,8 +37,8 @@ def to_filename(im_id):
 
 def append_log(msg):
     with open("log.txt",'a') as f:
-        f.write(str(time.time()))
-        f.write(str(msg))
+        f.write(str(time.time()) + ' :\t')
+        f.write(str(msg) + '\n')
 
 
 async def download_coroutine(session, im_id,im_num):
@@ -53,6 +57,7 @@ async def download_coroutine(session, im_id,im_num):
                 return await response.release()
     except:
         print("Retrying")
+        append_log("Retrying {} {}".format(im_num,im_id))
         return await download_coroutine(session, im_id,im_num)
  
  

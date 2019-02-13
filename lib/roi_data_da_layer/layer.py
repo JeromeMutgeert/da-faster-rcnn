@@ -16,6 +16,9 @@ from roi_data_da_layer.minibatch import get_minibatch
 import numpy as np
 import yaml
 from multiprocessing import Process, Queue
+import time
+import os
+
 
 class RoIDataDALayer(caffe.Layer):
     """Fast R-CNN data layer used for training."""
@@ -232,15 +235,19 @@ TARGET_DATA_PATH = "./TargetDataLoaderProcess/{}"
 
 # counter txt's interface:
 def update_read(read):
-    with open(TARGET_DATA_PATH.format("read.txt"),'w') as f:
+    with open(TARGET_DATA_PATH.format("read_temp.txt"),'w') as f:
         f.write(str(read))
+        f.flush()
+        os.fsync(f.fileno())
+    # atomic:
+    os.rename("read_temp.txt","read.txt")
 
 def get_fetched():
     with open(TARGET_DATA_PATH.format("fetched.txt"),'r') as f:
         numstr = f.read()
     return int(numstr)
 
-import time
+
 def target_roi_gen():
     
     num = 0
