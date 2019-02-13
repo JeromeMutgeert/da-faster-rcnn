@@ -235,12 +235,14 @@ TARGET_DATA_PATH = "./TargetDataLoaderProcess/{}"
 
 # counter txt's interface:
 def update_read(read):
-    with open(TARGET_DATA_PATH.format("read_temp.txt"),'w') as f:
+    tempfile = TARGET_DATA_PATH.format("read_temp.txt")
+    file = TARGET_DATA_PATH.format("read.txt")
+    with open(tempfile,'w') as f:
         f.write(str(read))
         f.flush()
         os.fsync(f.fileno())
     # atomic:
-    os.rename("read_temp.txt","read.txt")
+    os.rename(tempfile,file)
 
 def get_fetched():
     with open(TARGET_DATA_PATH.format("fetched.txt"),'r') as f:
