@@ -219,8 +219,8 @@ class BlobFetcher(Process):
             
             target_pic = not target_pic
 
-
 TARGET_DATA_PATH = "./TargetDataLoaderProcess/{}"
+PYTHON3 = os.environ['PYTHON3'] #= "/home/jerome/anaconda3/envs/rl/bin/python"
 
 # counter txt's interface:
 def update_read(read):
@@ -245,24 +245,21 @@ def target_roi_gen():
     fetched = 0
     read = 0
     
-    
-    # make sure we do not read an old version of fetched.txt:
-    with open(TARGET_DATA_PATH.format("fetched.txt"),'w') as f:
-        f.write(str(fetched))
-        f.flush()
-        os.fsync(f.fileno())
-    # As long as read.txt is not increased, fetched.txt will not be overwritten by a newer write of the loader process it is reset.
-    
-    # triggers resetting of the live db:
+    # Trigger crash of possible previous running data loader process:
     update_read(read)
+    time.sleep(.5)
     
+    # start data loader process:
+    os.chdir(TARGET_DATA_PATH.format(""))
+    os.system(" ".join([PYTHON3,"data_loader.py",'&']))
+    os.chdir("..")
     
     while True:
         
         # Ensure the file 'target_<num>.jpg" is loaded:
-        if not fetched > num:
+        if not (fetched > num):
             fetched = get_fetched()
-        while not fetched > num:
+        while not (fetched > num):
             time.sleep(.02) #query with 50 Hz untill the file(s) is (are) loaded.
             fetched = get_fetched()
         
@@ -286,6 +283,6 @@ def target_roi_gen():
         yield roi
         
         read += 1
-        update_read(read - 1) #lie a bit to make sure it is not removed early
+        update_read(read)
         
         num += 1

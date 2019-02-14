@@ -9,6 +9,7 @@ import time
 
 # Settings:
 Buffer = 50
+BackBuffer = 20
 Max_Query = 12
 
 
@@ -77,6 +78,8 @@ if __name__ == "__main__":
     read = 0
     removed = 0
 
+    idle_count = 0
+
     # init/reset protocol files:
     update_fetched(0)
     with open("read.txt",'w') as f:
@@ -129,28 +132,36 @@ if __name__ == "__main__":
             
             # broadcast
             update_fetched(fetched)
+
+            idle_count = 0
             
-        elif fetched - read == Buffer:
+        else:
             # we're all set
+
+            # Check for exitting:
+            stop = False
+            idle_count += 1
+            if idle_count > 1000: # about 3 mins idle
+                append_log("Idle time-out. Exiting.")
+                stop = True
+            if fetched - read > Buffer: # read.txt has decreased:
+                append_log("Read.txt has decreased. Exiting.")
+                stop = True
+            if stop:
+                for im_id in present:
+                    os.remove(to_filename(im_id))
+                exit()
+
+            # sleep a bit to avoid spinning.
             time.sleep(.2)
 
-        else: # read has decreased:
-            # reset
-            fetched = read
-            update_fetched(fetched)
-            removed = read
-            for im_id in present:
-                os.remove(to_filename(im_id))
-            present = []
-            id_gen = id_generator() # reshuffle
-
         # remove
-        while removed < read:
+        while removed < read - BackBuffer:
             try:
                 im_id = present[0]
             except:
-                append_log("")
+                append_log("Non-existing file reported as read. Exiting.")
+                exit()
             present = present[1:]
             os.remove(to_filename(im_id))
-            removed +=1
-            
+            removed += 1
