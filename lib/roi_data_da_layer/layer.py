@@ -249,6 +249,12 @@ def target_roi_gen():
     update_read(read)
     time.sleep(.5)
     
+    # Make sure we do not read from an old version of fetched.txt:
+    with open(TARGET_DATA_PATH.format("fetched.txt"),'w') as f:
+        f.write(str(0))
+        f.flush()
+        os.fsync(f.fileno())
+    
     # start data loader process:
     os.chdir(TARGET_DATA_PATH.format(""))
     os.system(" ".join([PYTHON3,"data_loader.py",'&']))
