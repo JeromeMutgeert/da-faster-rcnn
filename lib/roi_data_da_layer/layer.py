@@ -16,8 +16,8 @@ from roi_data_da_layer.minibatch import get_minibatch
 import numpy as np
 import yaml
 from multiprocessing import Process, Queue
-import time
-import os
+
+from live_dataset import target_file_streamer
 
 
 class RoIDataDALayer(caffe.Layer):
@@ -207,6 +207,8 @@ class BlobFetcher(Process):
         target_pic = False
         targets = target_roi_gen()
         while True:
+            
+            # Target pictures are intercalated with the source pictures:
             if target_pic:
                 target_roi = next(targets)
                 minibatch_db = [target_roi]
@@ -219,58 +221,9 @@ class BlobFetcher(Process):
             
             target_pic = not target_pic
 
-TARGET_DATA_PATH = "./TargetDataLoaderProcess/{}"
-PYTHON3 = os.environ['PYTHON3'] #= "/home/jerome/anaconda3/envs/rl/bin/python"
-
-# counter txt's interface:
-def update_read(read):
-    tempfile = TARGET_DATA_PATH.format("read_temp.txt")
-    file = TARGET_DATA_PATH.format("read.txt")
-    with open(tempfile,'w') as f:
-        f.write(str(read))
-        f.flush()
-        os.fsync(f.fileno())
-    # atomic:
-    os.rename(tempfile,file)
-
-def get_fetched():
-    with open(TARGET_DATA_PATH.format("fetched.txt"),'r') as f:
-        numstr = f.read()
-    return int(numstr)
-
 
 def target_roi_gen():
-    
-    num = 0
-    fetched = 0
-    read = 0
-    
-    # Trigger crash of possible previous running data loader process:
-    update_read(read)
-    time.sleep(.5)
-    
-    # Make sure we do not read from an old version of fetched.txt:
-    with open(TARGET_DATA_PATH.format("fetched.txt"),'w') as f:
-        f.write(str(0))
-        f.flush()
-        os.fsync(f.fileno())
-    
-    # start data loader process:
-    os.chdir(TARGET_DATA_PATH.format(""))
-    os.system(" ".join([PYTHON3,"data_loader.py",'&']))
-    os.chdir("..")
-    
-    while True:
-        
-        # Ensure the file 'target_<num>.jpg" is loaded:
-        if not (fetched > num):
-            fetched = get_fetched()
-        while not (fetched > num):
-            time.sleep(.02) #query with 50 Hz untill the file(s) is (are) loaded.
-            fetched = get_fetched()
-        
-        
-        filepath = TARGET_DATA_PATH.format("target_{}.jpg".format(num))
+    for filepath in target_file_streamer():
         flipped = np.random.randint(2) == 1
         
         roi = {
@@ -285,10 +238,4 @@ def target_roi_gen():
             'height': 0,
             'flipped': flipped
         }
-        
         yield roi
-        
-        read += 1
-        update_read(read)
-        
-        num += 1

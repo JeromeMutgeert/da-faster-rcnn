@@ -16,6 +16,8 @@ Max_Query = 12
 url_base = "https://test.yisual.com/images/media/download/picturethis/"
 headers = {"api-key": "ccea03e0e3a08c428870393376e5cf7b7be7a55c", "api-secret": os.environ["SECRET"]}
 
+# cacheLoc = "/media/jerome/DATA/Study_d/ThesisD/TargetData"
+
 # dummy_im_id = "5461e5219da59bde29aed195"
 # dummy_url = url_base + dummy_im_id
 
@@ -45,9 +47,10 @@ def append_log(msg):
 
 
 async def download_coroutine(session, im_id,im_num):
+
     url = url_base + im_id
     try:
-        with async_timeout.timeout(20):
+        with async_timeout.timeout(60):
             async with session.get(url,headers=headers) as response:
                 filename = to_filename(im_num)
                 with open(filename, 'wb') as f_handle:
@@ -84,6 +87,8 @@ if __name__ == "__main__":
     update_fetched(0)
     with open("read.txt",'w') as f:
         f.write('0')
+        f.flush()
+        os.fsync(f.fileno())
 
     ids = []
     with open("ids.txt",'r') as f:
@@ -92,14 +97,14 @@ if __name__ == "__main__":
         
     epochs = 0
     def id_generator():
-        np.random.shuffle(ids)
+        #np.random.shuffle(ids)
         i = 0
         while True:
             yield ids[i]
             i += 1
             if i == len(ids):
                 i = 0
-                np.random.shuffle(ids)
+                #np.random.shuffle(ids)
                 epoch += 1
                 print("Loaded epoch {}".format(epoch))
 
