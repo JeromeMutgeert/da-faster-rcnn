@@ -16,7 +16,7 @@ Max_Query = 12
 url_base = "https://test.yisual.com/images/media/download/picturethis/"
 headers = {"api-key": "ccea03e0e3a08c428870393376e5cf7b7be7a55c", "api-secret": os.environ["SECRET"]}
 
-# cacheLoc = "/media/jerome/DATA/Study_d/ThesisD/TargetData"
+cacheLoc = "/media/jerome/DATA/Study_d/ThesisD/TargetData/"
 
 # dummy_im_id = "5461e5219da59bde29aed195"
 # dummy_url = url_base + dummy_im_id
@@ -46,25 +46,39 @@ def append_log(msg):
         f.write(str(msg) + '\n')
 
 
-async def download_coroutine(session, im_id,im_num):
+async def download_coroutine(session, im_id, im_num):
+    cache = cacheLoc + im_id + '.jpg'
+    filename = to_filename(im_num)
+
+    if os.path.exists(cache):
+        # copy from cache:
+        os.system('cp {} ./{}'.format(cache,filename))
+        return
 
     url = url_base + im_id
-    try:
-        with async_timeout.timeout(60):
-            async with session.get(url,headers=headers) as response:
-                filename = to_filename(im_num)
-                with open(filename, 'wb') as f_handle:
-                    while True:
-                        chunk = await response.content.read(1024)
-                        if not chunk:
-                            # print('done')
-                            break
-                        f_handle.write(chunk)
-                return await response.release()
-    except:
-        print("Retrying")
-        append_log("Retrying {} {}".format(im_num,im_id))
-        return await download_coroutine(session, im_id,im_num)
+    while True:
+        try:
+            with async_timeout.timeout(60):
+                async with session.get(url,headers=headers) as response:
+                    with open(filename, 'wb') as f_handle:
+                        while True:
+                            chunk = await response.content.read(1024)
+                            if not chunk:
+                                # print('done')
+                                break
+                            f_handle.write(chunk)
+                        f_handle.flush()
+                    res = await response.release()
+
+                    # copy to cache:
+                    if os.path.exists(cacheLoc):
+                        os.system('cp {} {}'.format(filename,cache))
+
+                    return res
+        except:
+            print("Retrying")
+            append_log("Retrying {} {}".format(im_num,im_id))
+        # return await download_coroutine(session, im_id,im_num)
  
  
 async def get_batch(loop,im_ids,im_nums):
@@ -95,10 +109,11 @@ if __name__ == "__main__":
         ids = [i.strip() for i in f.readlines()]
         
         
-    epoch = 0
+    
     def id_generator():
         np.random.shuffle(ids)
         i = 0
+        epoch = 0
         while True:
             yield ids[i]
             i += 1
