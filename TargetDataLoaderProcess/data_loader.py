@@ -95,16 +95,16 @@ if __name__ == "__main__":
         ids = [i.strip() for i in f.readlines()]
         
         
-    epochs = 0
+    epoch = 0
     def id_generator():
-        #np.random.shuffle(ids)
+        np.random.shuffle(ids)
         i = 0
         while True:
             yield ids[i]
             i += 1
             if i == len(ids):
                 i = 0
-                #np.random.shuffle(ids)
+                np.random.shuffle(ids)
                 epoch += 1
                 print("Loaded epoch {}".format(epoch))
 
