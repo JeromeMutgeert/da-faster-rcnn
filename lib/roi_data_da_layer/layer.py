@@ -59,7 +59,7 @@ class RoIDataDALayer(caffe.Layer):
         separate process and made available through self._blob_queue.
         """
         if cfg.TRAIN.USE_PREFETCH or cfg.FETCH_TARGETS:
-            print self._blob_queue.qsize()
+            # print self._blob_queue.qsize()
             return self._blob_queue.get()
         else:
             db_inds = self._get_next_minibatch_inds()

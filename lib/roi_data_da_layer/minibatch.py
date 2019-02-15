@@ -146,6 +146,12 @@ def _get_image_blob(roidb, scale_inds):
         im_name = roidb[i]['image']
         im = cv2.imread(im_name)
         
+        while type(im) == type(None):
+            print("Last resort error catching!")
+            import time
+            time.sleep(.1)
+            im = cv2.imread(im_name)
+            
         assert type(im) != type(None), "im at {} is not found. roi: {}".format(im_name,roidb[i])
         
         # # debug:
