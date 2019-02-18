@@ -146,28 +146,42 @@ def _get_image_blob(roidb, scale_inds):
         im_name = roidb[i]['image']
         im = cv2.imread(im_name)
         
-        while type(im) == type(None):
-            print("Last resort error catching! Re-downloading {}".format(im_name))
-            import urllib2
-            import os
-            
-            # get the corresponding im id:
-            im_num = int(os.path.basename(im_name)[7:-4])
-            with open("./TargetDataLoaderProcess/ids_current.txt",'r') as f:
-                ids = [j.strip() for j in f.readlines()]
-            im_id = str(ids[im_num % 20000])
-            print("Im id: {}".format(im_id))
-            
-            url_base = "https://test.yisual.com/images/media/download/picturethis/"
-            headers = {"api-key": "ccea03e0e3a08c428870393376e5cf7b7be7a55c", "api-secret": os.environ["SECRET"]}
-            url = url_base + im_id
-            req = urllib2.Request(url, headers=headers)
-            connection = urllib2.urlopen(req)
-            jpeg_str = connection.read()
-            connection.close()
-            img = np.frombuffer(jpeg_str, np.uint8)
-            im = cv2.imdecode(img,1)[:,:,::-1]
-            
+        for attempt in range(20):
+            if type(im) == type(None):
+                print("Last resort error catching! Re-downloading {}".format(im_name))
+                import urllib2
+                import os
+                import time
+                
+                # get the corresponding im id:
+                im_num = int(os.path.basename(im_name)[7:-4])  # "target_<num>.jpg" -> "<num>"
+                with open("./TargetDataLoaderProcess/ids_current.txt",'r') as f:
+                    ids = [j.strip() for j in f.readlines()]
+                im_id = str(ids[im_num % len(ids)])
+                print("Im id: {}".format(im_id))
+                
+                # append to log.txt
+                with open('./TargetDataLoaderProcess/log.txt','a') as f:
+                    f.write(str(time.time()) + ":\tAfter-downloading {} {}".format(im_num, im_id))
+                    f.flush()
+                    
+                url_base = "https://test.yisual.com/images/media/download/picturethis/"
+                headers = {"api-key": "ccea03e0e3a08c428870393376e5cf7b7be7a55c", "api-secret": os.environ["SECRET"]}
+                url = url_base + im_id
+                req = urllib2.Request(url, headers=headers)
+                connection = urllib2.urlopen(req)
+                jpeg_str = connection.read()
+                connection.close()
+                img = np.frombuffer(jpeg_str, np.uint8)
+                im = cv2.imdecode(img,1)
+                
+            if attempt > 5:
+                time.sleep(1)
+            if attempt > 10:
+                time.sleep(5)
+            if attempt > 15:
+                time.sleep(60)
+                
             
         assert type(im) != type(None), "im at {} is not found. roi: {}".format(im_name, roidb[i])
         
