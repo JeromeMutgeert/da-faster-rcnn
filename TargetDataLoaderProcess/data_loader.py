@@ -7,10 +7,13 @@ import os
 import numpy as np
 import time
 
+import cv2
+
 # Settings:
-Buffer = 50
+Buffer = 100
 BackBuffer = 20
 Max_Query = 12
+Timeout = 40
 
 
 url_base = "https://test.yisual.com/images/media/download/picturethis/"
@@ -47,6 +50,7 @@ def append_log(msg):
 
 
 async def download_coroutine(session, im_id, im_num):
+    # im_id = "5c59addcb71ee102f1e439ba"
     cache = cacheLoc + im_id + '.jpg'
     filename = to_filename(im_num)
 
@@ -56,9 +60,10 @@ async def download_coroutine(session, im_id, im_num):
         return
 
     url = url_base + im_id
-    while True:
+    im = None
+    while type(im) == type(None):
         try:
-            with async_timeout.timeout(60):
+            with async_timeout.timeout(Timeout):
                 async with session.get(url,headers=headers) as response:
                     with open(filename, 'wb') as f_handle:
                         while True:
@@ -68,18 +73,22 @@ async def download_coroutine(session, im_id, im_num):
                                 break
                             f_handle.write(chunk)
                         f_handle.flush()
-                    res = await response.release()
+                    response.release()
 
-                    # copy to cache:
-                    if os.path.exists(cacheLoc):
-                        os.system('cp {} {}'.format(filename,cache))
+            # Verify if download was succesfull:
+            im = cv2.imread(filename)
+            if type(im) == type(None):
+                append_log("{} {} Incorrect download.".format(im_num,im_id))
+                print("{} {} Incorrect download.".format(im_num,im_id))
 
-                    return res
         except:
-            print("Retrying")
-            append_log("Retrying {} {}".format(im_num,im_id))
-        # return await download_coroutine(session, im_id,im_num)
- 
+            append_log("Downloading timed out, retrying {} {}".format(im_num,im_id))
+            print("Downloading timed out, retrying {} {}".format(im_num,im_id))
+
+    # Finally:
+    if os.path.exists(cacheLoc):
+        os.system('cp {} {}'.format(filename,cache))
+
  
 async def get_batch(loop,im_ids,im_nums):
     async with aiohttp.ClientSession(loop=loop) as session:
@@ -108,19 +117,25 @@ if __name__ == "__main__":
     with open("ids.txt",'r') as f:
         ids = [i.strip() for i in f.readlines()]
         
-        
+    def shuffle(ids, epoch):
+        np.random.shuffle(ids)
+        filename = "ids_ep{}.txt".format(epoch)
+        with open(filename,'w') as f:
+            f.write('\n'.join(ids))
+            f.flush()
+        os.system('cp {} ids_current.txt'.format(filename))
     
     def id_generator():
-        np.random.shuffle(ids)
         i = 0
         epoch = 0
+        shuffle(ids,epoch)
         while True:
             yield ids[i]
             i += 1
             if i == len(ids):
                 i = 0
-                np.random.shuffle(ids)
                 epoch += 1
+                shuffle(ids,epoch)
                 print("Loaded epoch {}".format(epoch))
 
     id_gen = id_generator()
@@ -135,7 +150,7 @@ if __name__ == "__main__":
         # print(fetched,read,removed)
 
         # refill:
-        if fetched - read < Buffer:
+        if (fetched - read) < Buffer:
             # TODO: determine next imgs:
             load_N = read + Buffer - fetched
             load_N = min(load_N,Max_Query)
@@ -145,7 +160,7 @@ if __name__ == "__main__":
             
             loop = asyncio.get_event_loop()
             loop.run_until_complete(get_batch(loop,im_ids,im_nums))
-            
+
             # done fetching
             fetched += load_N
             present.extend(im_nums)
@@ -164,24 +179,30 @@ if __name__ == "__main__":
             if idle_count > 1000: # about 3 mins idle
                 append_log("Idle time-out. Exiting.")
                 stop = True
-            if fetched - read > Buffer: # read.txt has decreased:
+            if (fetched - read) > Buffer: # read.txt has decreased:
                 append_log("Read.txt has decreased. Exiting.")
                 stop = True
             if stop:
-                for im_id in present:
-                    os.remove(to_filename(im_id))
+                for im_num in present:
+                    os.remove(to_filename(im_num))
                 exit()
 
             # sleep a bit to avoid spinning.
             time.sleep(.2)
 
         # remove
-        while removed < read - BackBuffer:
+        while removed < (read - BackBuffer):
             try:
-                im_id = present[0]
+                im_num = present[0]
             except:
                 append_log("Non-existing file reported as read. Exiting.")
                 exit()
             present = present[1:]
-            os.remove(to_filename(im_id))
+
+            try:
+                os.remove(to_filename(im_num))
+            except:
+                append_log("While removing: File not found: {}".format(to_filename(im_num)))
+                print("While removing: File not found: {}".format(to_filename(im_num)))
+
             removed += 1
