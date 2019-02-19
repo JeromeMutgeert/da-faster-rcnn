@@ -74,8 +74,8 @@ async def download_coroutine(session, im_id, im_num):
                                 break
                             f_handle.write(chunk)
                         f_handle.flush()
-                        os.fsync(f.fileno())
-                    response.release()
+                        os.fsync(f_handle.fileno())
+                    res = await response.release()
 
             # Verify if download was succesfull:
             im = cv2.imread(filename)
@@ -85,15 +85,18 @@ async def download_coroutine(session, im_id, im_num):
                 print("{} {} Incorrect download.".format(im_num,im_id))
 
         except:
+            problematic = True
             append_log("Downloading timed out, retrying {} {}".format(im_num,im_id))
             print("Downloading timed out, retrying {} {}".format(im_num,im_id))
 
     if problematic:
-        append_log("Succeeded!")
+        append_log("Succeeded! {} {}".format(im_num,im_id))
 
     # Finally:
     if os.path.exists(cacheLoc):
         os.system('cp {} {}'.format(filename,cache))
+
+    return res
 
  
 async def get_batch(loop,im_ids,im_nums):
